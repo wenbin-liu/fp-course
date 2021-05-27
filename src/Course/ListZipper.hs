@@ -437,8 +437,11 @@ moveLeftN ::
   Int
   -> ListZipper a
   -> MaybeListZipper a
-moveLeftN =
-  error "todo: Course.ListZipper#moveLeftN"
+moveLeftN n x
+  | n == 0 = IsZ $ x
+  | n > 0 = (moveLeftN (n-1)) -<< moveLeft x
+  | n < 0 = (moveLeftN (n+1)) -<< moveRight x
+  | otherwise = IsNotZ
 
 -- | Move the focus right the given number of positions. If the value is negative, move left instead.
 --
@@ -451,8 +454,7 @@ moveRightN ::
   Int
   -> ListZipper a
   -> MaybeListZipper a
-moveRightN =
-  error "todo: Course.ListZipper#moveRightN"
+moveRightN n x = moveLeftN (-n) x
 
 -- | Move the focus left the given number of positions. If the value is negative, move right instead.
 -- If the focus cannot be moved, the given number of times, return the value by which it can be moved instead.
@@ -481,8 +483,13 @@ moveLeftN' ::
   Int
   -> ListZipper a
   -> Either Int (ListZipper a)
-moveLeftN' =
-  error "todo: Course.ListZipper#moveLeftN'"
+moveLeftN' n (ListZipper l x r)
+  | n == 0 = Right (ListZipper l x r)
+  | n > length l = Left (length l)
+  | n < -(length r) = Left (length r)
+  | n > 0 = moveLeftN' (n-1) (moveLeftLoop (ListZipper l x r))
+  | n < 0 = moveLeftN' (n+1) (moveRightLoop (ListZipper l x r))
+  | otherwise = Left 0  -- This Will Never Happen
 
 -- | Move the focus right the given number of positions. If the value is negative, move left instead.
 -- If the focus cannot be moved, the given number of times, return the value by which it can be moved instead.
@@ -505,8 +512,11 @@ moveRightN' ::
   Int
   -> ListZipper a
   -> Either Int (ListZipper a)
-moveRightN' =
-  error "todo: Course.ListZipper#moveRightN'"
+moveRightN' n x = id $ moveLeftN' (-n) x
+  where
+    inv (Left y) = Left (-y)
+    inv (Right y) = Right y
+  
 
 -- | Move the focus to the given absolute position in the zipper. Traverse the zipper only to the extent required.
 --
@@ -522,8 +532,7 @@ nth ::
   Int
   -> ListZipper a
   -> MaybeListZipper a
-nth =
-  error "todo: Course.ListZipper#nth"
+nth n (ListZipper l x r) = moveRightN (n - (length l)) (ListZipper l x r)
 
 -- | Return the absolute position of the current focus in the zipper.
 --
