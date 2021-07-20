@@ -6,7 +6,10 @@ module Course.FastAnagrams where
 import Course.Core
 import Course.List
 import Course.Functor
+import Course.Monad
+import Course.Applicative
 import qualified Data.Set as S
+import Data.Ord
 
 -- Return all anagrams of the given string
 -- that appear in the given dictionary file.
@@ -14,8 +17,12 @@ fastAnagrams ::
   Chars
   -> FilePath
   -> IO (List Chars)
-fastAnagrams =
-  error "todo: Course.FastAnagrams#fastAnagrams"
+fastAnagrams name fileName = ((ncString <$>) <$>)
+                             ((flip (filter . flip S.member)
+                              (NoCaseString <$> (permutations name)) .
+                              S.fromList . hlist .
+                              (\x -> NoCaseString <$> (lines x))) <$>
+                             readFile fileName)
 
 newtype NoCaseString =
   NoCaseString {
@@ -27,3 +34,6 @@ instance Eq NoCaseString where
 
 instance Show NoCaseString where
   show = show . ncString
+
+instance Ord NoCaseString where
+  compare = on compare ((toLower <$> ) . ncString)
