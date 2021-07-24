@@ -25,6 +25,7 @@ import Course.List
 import Course.Functor
 import Course.Applicative
 import Course.Monad
+import Course.Traversable
 
 -- $setup
 -- >>> :set -XOverloadedStrings
@@ -173,7 +174,7 @@ illion =
      , "septendecillion"
      , "octodecillion"
      , "novemdecillion"
-     ] ++ lift2 ((++) =<<) preillion postillion
+     ] ++ lift2 ((++)  =<<) preillion postillion
 
 -- A data type representing the digits zero to nine.
 data Digit =
@@ -219,6 +220,7 @@ data Digit3 =
   | D2 Digit Digit
   | D3 Digit Digit Digit
   deriving Eq
+
 
 -- Possibly convert a character to a digit.
 fromChar ::
@@ -323,5 +325,88 @@ fromChar _ =
 dollars ::
   Chars
   -> Chars
-dollars =
-  error "todo: Course.Cheque#dollars"
+dollars str = let (int, cent) = break (== '.') (str ++ listh ".0")
+                  (intDigitsOp, centDigitsOp) = (filter (/= Empty)  (fromChar <$> int),
+                                             filter (/= Empty)  (fromChar <$> cent))
+                  (Full intDigits, Full centDigits) = (sequence intDigitsOp, (sequence . take 2 $ centDigitsOp))
+                  intDollar = (flip showIntDollar illion) . toDigit3 . dropWhile (== Zero) $ intDigits
+                  centDollar = (flip showIntDollar illion) . toDigit3 . dropWhile (== Zero )$ centDigits
+                  dollarStr = case intDollar of
+                    Nil -> Nil
+                    (' ':.'o':.'n':.'e':.' ':.Nil) -> listh " one dollar"
+                    x -> x ++ listh "dollars"
+                  centStr = case centDollar of
+                    Nil -> Nil
+                    (' ':.'o':.'n':.'e':.' ':. Nil) -> listh " one cent"
+                    x -> x ++ listh "cents"
+              in case dollarStr of
+                   Nil -> centStr
+                   x -> case centStr of
+                     Nil ->drop 1 x
+                     y -> drop 1  $ x ++ (listh " and") ++y
+
+showIntDollar :: List Digit3 -> List Chars-> Chars
+showIntDollar digits units = let n = length digits
+                             in flatten $  zipWith
+                                (\x y->" "++ showDigit3 x ++ " " ++ y)
+                                 digits (reverse (take n units))
+toDigit3 :: List Digit -> List Digit3
+toDigit3 Nil = Nil
+toDigit3 (d1 :. Nil) = (D1 d1) :. Nil
+toDigit3 (d2 :. d1 :. Nil) = D2 d2 d1 :. Nil
+toDigit3 (d3 :. d2 :. d1 :. Nil) = D3 d3 d2 d1 :. Nil
+toDigit3 str = let n = length str
+                   head = take (n-3) str
+                   tail = drop (n-3) str
+               in (toDigit3 head) ++ (toDigit3 tail)
+
+
+showDigit3 :: Digit3 -> Chars
+showDigit3 (D1 d) = showDigit d
+showDigit3 (D2 d2 d1) =  headOr "" ( drop ((digit2ToInt d2 d1) - 10) digit2Str)
+showDigit3 (D3 d3 d2 d1) = showDigit d3 ++ " hundred and " ++
+                           (showDigit3  (D2  d2 d1))
+
+digit2Str :: List Chars
+digit2Str = (listh ["ten",
+                    "eleven",
+                    "twelve",
+                     "thirteen",
+                     "fourteen",
+                     "fifteen",
+                     "sixteen",
+                     "seventeen",
+                     "eighteen",
+                     "nineteen"]) ++ (lift2 ((++) =<< )) pre pos
+            where
+              pre = const <$> (listh ["twenty",
+                           "thirty",
+                           "forty",
+                           "fifty",
+                           "sixty",
+                           "seventy",
+                           "eighty",
+                           "ninety"])
+              pos = (listh ["",
+                           "-one",
+                           "-two",
+                           "-three",
+                           "-four",
+                           "-five",
+                           "-six",
+                           "-seven",
+                           "-eight",
+                           "-nine"])
+
+digit2ToInt :: Digit -> Digit -> Int
+digit2ToInt d2 d1 = (toInt d2) * 10 + toInt d1
+  where toInt Zero = 0
+        toInt One = 1
+        toInt Two = 2
+        toInt Three = 3
+        toInt Four = 4
+        toInt Five = 5
+        toInt Six = 6
+        toInt Seven = 7
+        toInt Eight = 8
+        toInt Nine = 9
